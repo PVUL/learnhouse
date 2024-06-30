@@ -1,49 +1,49 @@
 'use client'
-import PageLoading from '@components/Objects/Loaders/PageLoading'
 import { getAPIUrl } from '@services/config/config'
 import { swrFetcher } from '@services/utils/ts/requests'
 import React, { createContext, useContext, useEffect, useReducer } from 'react'
 import useSWR from 'swr'
+import { useLHSession } from '@components/Contexts/LHSessionContext'
 
-export const CourseContext = createContext(null) as any
-export const CourseDispatchContext = createContext(null) as any
+export const CourseContext = createContext(null)
+export const CourseDispatchContext = createContext(null)
 
-export function CourseProvider({
-  children,
-  courseuuid,
-}: {
-  children: React.ReactNode
-  courseuuid: string
-}) {
-  const { data: courseStructureData } = useSWR(
-    `${getAPIUrl()}courses/${courseuuid}/meta`,
-    swrFetcher
-  )
-  const [courseStructure, dispatchCourseStructure] = useReducer(courseReducer, {
-    courseStructure: courseStructureData ? courseStructureData : {},
+export function CourseProvider({ children, courseuuid }: any) {
+  const session = useLHSession() as any;
+  const access_token = session?.data?.tokens?.access_token;
+
+  const { data: courseStructureData, error } = useSWR(`${getAPIUrl()}courses/${courseuuid}/meta`,
+    url => swrFetcher(url, access_token)
+  );
+
+  const initialState = {
+    courseStructure: {},
     courseOrder: {},
     isSaved: true,
-  })
+    isLoading: true
+  };
 
-  // When courseStructureData is loaded, update the state
+  const [state, dispatch] = useReducer(courseReducer, initialState) as any;
+
   useEffect(() => {
     if (courseStructureData) {
-      dispatchCourseStructure({
-        type: 'setCourseStructure',
-        payload: courseStructureData,
-      })
+      dispatch({ type: 'setCourseStructure', payload: courseStructureData });
+      dispatch({ type: 'setIsLoaded' });
     }
-  }, [courseStructureData])
+  }, [courseStructureData]);
 
-  if (!courseStructureData) return <PageLoading></PageLoading>
+  if (error) return <div>Failed to load course structure</div>;
+  if (!courseStructureData) return '';
 
-  return (
-    <CourseContext.Provider value={courseStructure}>
-      <CourseDispatchContext.Provider value={dispatchCourseStructure}>
-        {children}
-      </CourseDispatchContext.Provider>
-    </CourseContext.Provider>
-  )
+  if (courseStructureData) {
+    return (
+      <CourseContext.Provider value={state}>
+        <CourseDispatchContext.Provider value={dispatch}>
+          {children}
+        </CourseDispatchContext.Provider>
+      </CourseContext.Provider>
+    )
+  }
 }
 
 export function useCourse() {
@@ -64,6 +64,8 @@ function courseReducer(state: any, action: any) {
       return { ...state, isSaved: true }
     case 'setIsNotSaved':
       return { ...state, isSaved: false }
+    case 'setIsLoaded':
+      return { ...state, isLoading: false }
     default:
       throw new Error(`Unhandled action type: ${action.type}`)
   }

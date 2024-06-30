@@ -41,14 +41,13 @@ import html from 'highlight.js/lib/languages/xml'
 import python from 'highlight.js/lib/languages/python'
 import java from 'highlight.js/lib/languages/java'
 import { CourseProvider } from '@components/Contexts/CourseContext'
-import { useSession } from '@components/Contexts/SessionContext'
+import { useLHSession } from '@components/Contexts/LHSessionContext'
 import AIEditorToolkit from './AI/AIEditorToolkit'
 import useGetAIFeatures from '@components/AI/Hooks/useGetAIFeatures'
-import UserAvatar from '../UserAvatar'
-import randomColor from 'randomcolor'
 import Collaboration from '@tiptap/extension-collaboration'
 import CollaborationCursor from '@tiptap/extension-collaboration-cursor'
 import ActiveAvatars from './ActiveAvatars'
+import { getUriWithOrg } from '@services/config/config'
 
 interface Editor {
   content: string
@@ -65,7 +64,7 @@ interface Editor {
 }
 
 function Editor(props: Editor) {
-  const session = useSession() as any
+  const session = useLHSession() as any
   const dispatchAIEditor = useAIEditorDispatch() as any
   const aiEditorState = useAIEditor() as AIEditorStateTypes
   const is_ai_feature_enabled = useGetAIFeatures({ feature: 'editor' })
@@ -145,7 +144,7 @@ function Editor(props: Editor) {
         CollaborationCursor.configure({
           provider: props.hocuspocusProvider,
           user: {
-            name: props.session.user.first_name + ' ' + props.session.user.last_name,
+            name: props.session.data.user.first_name + ' ' + props.session.data.user.last_name,
             color: props.userRandomColor,
           },
         }),
@@ -184,11 +183,11 @@ function Editor(props: Editor) {
                 </Link>
                 <Link target="_blank" href={`/course/${course_uuid}`}>
                   <EditorInfoThumbnail
-                    src={`${getCourseThumbnailMediaDirectory(
+                    src={`${props.course.thumbnail_image ? getCourseThumbnailMediaDirectory(
                       props.org?.org_uuid,
                       props.course.course_uuid,
                       props.course.thumbnail_image
-                    )}`}
+                    ) : getUriWithOrg(props.org?.slug,'/empty_thumbnail.png')}`}
                     alt=""
                   ></EditorInfoThumbnail>
                 </Link>
